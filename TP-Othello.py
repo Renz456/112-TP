@@ -1,7 +1,7 @@
 # TO DO:
 # - Helper Functions: checkOutflank, canSwitch, checkWin DONE!
-# - Write minimax alg (Work in Progress)
-# - Function to determine "score" of the game for minimaxAlg DONE! (sorta)
+# - Write minimax alg DONE!
+# - Function to determine "score" of the game for minimaxAlg DONE!
 # - Fix buttons on homepage and make homepage look nicer
 # - Error messages while playing? (like invalid move no flips or smth) 
 # - decide "cool" mode to include
@@ -11,7 +11,7 @@
 # - Sockets? for multiple computers
 # - Hints for 2 player? (could use the same minimax alg)
 # - different shaped boards for cool feature with obstacles?
-# Other more complex heuristics for minimax?
+# Other more complex heuristics for minimax? DONE!
 
 from cmu_112_graphics import *
 import tkinter as tk
@@ -25,10 +25,12 @@ def appStarted(app):
     playGame(app)
     app.home = True
     app.play = False
+    app.help = False
     createHome(app)
 
 def createHome(app):
     app.buttonSize = app.width//10
+    # coordinates for 3 main buttons
     app.bx0 = app.width//3
     app.bx1 = app.width*2//3
     app.b1y0 = app.height*5//16
@@ -37,6 +39,12 @@ def createHome(app):
     app.b2y1 = app.b2y0 + app.height*2//16
     app.b3y0 = app.b2y1 + app.height//16
     app.b3y1 = app.b3y0 + app.height*2//16
+
+    # coordinates for extra help button
+    app.hx0 = app.width*5//12
+    app.hx1 = app.width*7//12
+    app.hy0 = app.b3y1+ app.height//16
+    app.hy1 = app.hy0 + app.height//16
 
 def playGame(app):
     app.board = []
@@ -51,7 +59,12 @@ def playGame(app):
     app.player = True
     # True is black False is white
     app.over = False
-    # Used this for a test case
+    app.Ai = False 
+    app.prevMove = []
+
+    # Used these for a test cases. 
+    # Test cases are now callable via shortcut using keypressed
+    # Test 1
     # app.board = [['Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black'],
     #             ['Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', None],
     #             ['Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'White'],
@@ -59,9 +72,18 @@ def playGame(app):
     #             ['Black', 'Black', 'Black', 'Black', 'Black', 'White', 'White', 'White'],
     #             ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None],
     #             ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None],
-    #             ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None]] 
-    app.Ai = False  
-
+    #             ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None]]
+    # Test 2
+    # app.board = [['White', 'White', 'White', 'White', 'White', 'White', 'White', 'White'],
+    #             ['White', 'White', 'White', 'White', 'White', 'White', 'White', None],
+    #             ['White', 'White', 'White', 'White', 'White', 'White', 'White', 'Black'],
+    #             ['White', 'White', 'White', 'White', 'White', 'White', 'White', 'White'],
+    #             ['White', 'White', 'White', 'White', 'White', 'Black', 'Black', 'Black'],
+    #             ['White', 'White', 'White', 'White', 'White', 'White', None, None],
+    #             ['White', 'White', 'White', 'White', 'White', None, None, None],
+    #             ['White', 'White', 'White', 'White', 'White', 'Black', None, None]]
+    
+     
 def playAi(app):
     playGame(app)
     app.ez = False
@@ -150,7 +172,7 @@ def canSwitch(app, player, board):
     for i in range(app.rows):
         for j in range(app.cols):
             if (not board[i][j] and 
-                isMoveLegal(app, i, j, board, app.player)):
+                isMoveLegal(app, i, j, board, player)):
                 return True
     print('no switch')
     return False
@@ -229,7 +251,7 @@ def hardScore(app, board):
                     or (i == 0 and j == app.cols-1) or (i == app.rows-1 and j == 0)):
                     add = corner
                 elif (((i == 0 and j == 1) or (i == 1 or j == 0)) 
-                        and board[0][o] == opponent):
+                        and board[0][0] == opponent):
                     add = -adj
                 elif (((i == app.rows-2 and j == 0) or (i == app.rows-1 and j == 1)) and 
                     board[app.rows-1][0]==opponent):
@@ -268,7 +290,7 @@ def possMoves(app, board, player):
                 moves.append(newBoard)
     return moves
 
-# written the AI stuff here because its not complete, will reorganise once its working
+# Helper function to get score of game based on difficulty
 def getScore(app, board):
     if app.ez:
         return ezScore(app, board)
@@ -277,46 +299,55 @@ def getScore(app, board):
     elif app.hard:
         return hardScore(app, board)
 
-# makes move for AI
+# makes move for AI (wrapper function for minimax)
 def makeMove(app):
     depth = 3
-    move = minimax(app, app.board, False, depth)
-    print(move)
-    print(app.board)
+    alpha = -200
+    beta = 200
+    move = minimax(app, app.board, alpha, beta, False, depth)
     app.board = copy.deepcopy(move[1])
 
-# Incomplete minimax, still have to write alpha beta pruning (have written down here because its incomplete)
+# Added alpha beta pruning, (hope it works tho lol)
 # Minimax alg that always runs a depth of 3, 
 # diffuclty is varied by assesing board score differently
-def minimax(app, board, player, depth):
+def minimax(app, board, alpha, beta, player, depth):
     if depth == 0 or checkWin(app, board):
         return getScore(app, board), board
     # haven't accounted for the game being over
     moves = possMoves(app, board, player)
     if not player: 
         hi = None
+        goodMove = None
         for move in moves:
             # New moves will be the child
             score = None
-            if canSwitch(app, player, board):
-                score = minimax(app, move, not player, depth-1)
+            if canSwitch(app, player, move):
+                score = minimax(app, move, alpha, beta, not player, depth-1)
             else:
-                score = minimax(app, move, player, depth-1)
+                score = minimax(app, move, alpha, beta, player, depth-1)
             if not hi or hi < score[0]:
                 hi = score[0]
                 goodMove = move
+            if alpha < score[0]:
+                alpha = score[0]
+            if beta <= alpha: break
         return hi, goodMove
     else:
         lo = None
+        goodMove = None
         for move in moves:
             # New moves will be the child
-            if canSwitch(app, player, board):
-                score = minimax(app, move, not player, depth-1)
+            if canSwitch(app, player, move):
+                score = minimax(app, move, alpha, beta, not player, depth-1)
             else:
-                score = minimax(app, move, player, depth-1)
+                score = minimax(app, move, alpha, beta, player, depth-1)
+            
             if not lo or lo > score[0]:
                 lo = score[0]
                 goodMove = move
+            if beta > score[0]:
+                beta = score[0]
+            if beta <= alpha: break
         return lo, goodMove
 
 def mousePressed(app, event):
@@ -329,13 +360,20 @@ def mousePressed(app, event):
                 app.play = True
                 playGame(app)
 
-            #pages for other 2 buttons are not ready yet
+            
             elif app.b2y0 < event.y < app.b2y1:
                 app.home = False
                 playAi(app)
-
+            
+            # page for other cool feature is not ready yet
             # elif app.b2y0 < event.y < app.b2y1:
             #     continue
+
+        
+        if ((app.hx0 < event.x < app.hx1) and
+                (app.hy0 < event.y < app.hy1)):
+            app.home = False
+            app.help = True
 
     elif app.play:
 
@@ -348,7 +386,8 @@ def mousePressed(app, event):
             col = (event.y - app.margin)//app.size
             #makes move if spot is empty and legal
             if not app.board[row][col] and isMoveLegal(app, row, col, app.board, app.player):
-                print(isMoveLegal(app, row, col, app.board, app.player))
+                prev = copy.deepcopy(app.board)
+                app.prevMove.append(prev)
                 if app.player:
                     app.board[row][col] = 'Black'
                 else:
@@ -358,7 +397,6 @@ def mousePressed(app, event):
                 flipPieces(app, row, col, app.board) 
                 #switches turn only if other player has a valid move
                 if canSwitch(app, app.player, app.board):
-                    print(canSwitch(app, app.player, app.board))
                     app.player = not app.player
                 else: print('no switch')
 
@@ -366,25 +404,29 @@ def mousePressed(app, event):
                 if app.Ai and not app.player:
                     while not app.player:
                         makeMove(app)
+                        if checkWin(app, app.board):
+                            break
                         if canSwitch(app, app.player, app.board):
                             app.player = not app.player
 
                 if checkWin(app, app.board): 
                     app.over = True
+                    if ezScore(app, app.board)>0: print('white wins')
+                    elif ezScore(app, app.board)<0: print('black wins')
+                    else: print('draw')
                     print('Game Over')
                     #game over
             else:
                 print('Illegal Move')
+
     elif app.choose:
         #checking if mouse was clicked inside a button
         if app.bx0 < event.x < app.bx1:
-            print('mmmmm')
             if app.b1y0 < event.y < app.b1y1:
                 app.ez = True
                 app.choose = False
                 app.Ai = True
                 app.play = True 
-                print('tf')
             elif app.b2y0 < event.y < app.b2y1:
                 app.med = True
                 app.choose = False
@@ -395,16 +437,48 @@ def mousePressed(app, event):
                 app.choose = False
                 app.Ai = True
                 app.play = True 
-   
+
+# Writing the features here for ease (will add a section in code later):
+#   -esc: return to home screen
+#   -r: restarts game
+#   -u: undos previous move  
 
 def keyPressed(app, event):
     #Going back to the home screen
     if event.key == 'Escape' and not app.home:
         app.home = True
         app.play = False
+        app.help = False
     #Restarts game
     if event.key.lower() == 'r' and app.play:
         playGame(app)
+    #Undos previous move
+    if event.key.lower() == 'u' and app.play and app.prevMove:
+        app.board = copy.deepcopy(app.prevMove[-1])
+        app.prevMove.pop()
+        # Won't switch player if playing 
+        # against AI as user is always Black!
+        if not app.Ai:
+            app.player = not app.player
+    if event.key.lower() == 's' and app.play:
+        app.board = [['White', 'White', 'White', 'White', 'White', 'White', 'White', 'White'],
+                    ['White', 'White', 'White', 'White', 'White', 'White', 'White', None],
+                    ['White', 'White', 'White', 'White', 'White', 'White', 'White', 'Black'],
+                    ['White', 'White', 'White', 'White', 'White', 'White', 'White', 'White'],
+                    ['White', 'White', 'White', 'White', 'White', 'Black', 'Black', 'Black'],
+                    ['White', 'White', 'White', 'White', 'White', 'White', None, None],
+                    ['White', 'White', 'White', 'White', 'White', None, None, None],
+                    ['White', 'White', 'White', 'White', 'White', 'Black', None, None]]
+    if event.key.lower() == 'e' and app.play:
+        app.board = [['Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black'],
+                    ['Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', None],
+                    ['Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'White'],
+                    ['Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black'],
+                    ['Black', 'Black', 'Black', 'Black', 'Black', 'White', 'White', 'White'],
+                    ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None],
+                    ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None],
+                    ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None]]
+
 
 def drawHome(app, canvas):
     tx = (app.bx0 + app.bx1)//2
@@ -427,10 +501,29 @@ def drawHome(app, canvas):
     canvas.create_text(tx, ty3, text='"cool" feature (make your own board or smth)')                                       
     #have not decided what the 'cool' feature will be yet
 
-    #was trying to make a button instead of just using a rectangle
-    # B = tk.Button(app,
-    #               text='hi')
-    #               #command=printLol)             
+    canvas.create_rectangle(app.hx0, app.hy0, app.hx1, app.hy1,
+                            fill='Blue', width=6)
+    ty4 = (app.hy0 + app.hy1)//2
+    canvas.create_text(tx, ty4, text='Help?')
+
+def drawHelp(app, canvas):
+    tx0 = (app.bx0 + app.bx1)//2
+    ty0 = app.height/16
+    fSize  = 40
+    canvas.create_text(tx0, ty0, text='Help',
+                        font=f'Arial {fSize} bold')
+
+    tx1 = app.width//8
+    ty1 = app.height*3//16
+    canvas.create_text(tx1, ty1, text='- Esc: To return to home screen',
+                        font='Arial 28 bold', anchor='w' )
+    
+    ty2 = ty1 + 32
+    canvas.create_text(tx1, ty2, text='- R: To restart game',
+                        font='Arial 28 bold', anchor='w' )
+    ty3 = ty2 + 32
+    canvas.create_text(tx1, ty3, text='- U: To undo previous move',
+                        font='Arial 28 bold', anchor='w')
 
 def drawDiffuclty(app, canvas):
     tx = (app.bx0 + app.bx1)//2
@@ -485,13 +578,12 @@ def drawBoard(app, canvas):
 def redrawAll(app, canvas):
     if app.home:
         drawHome(app, canvas)
+    elif app.help:
+        drawHelp(app, canvas)
     elif app.play:
         drawBoard(app, canvas)
     elif app.choose:
         drawDiffuclty(app, canvas)
-        
-        
-
 
 def runOthello():
     print('Running Othello :)')
