@@ -1,15 +1,17 @@
 # TO DO:
-# - Helper Functions: checkOutflank, canSwitch, checkWin
-# - Write minimax alg 
-# - Function to determine "score" of the game for minimaxAlg
+# - Helper Functions: checkOutflank, canSwitch, checkWin DONE!
+# - Write minimax alg (Work in Progress)
+# - Function to determine "score" of the game for minimaxAlg DONE! (sorta)
 # - Fix buttons on homepage and make homepage look nicer
 # - Error messages while playing? (like invalid move no flips or smth) 
 # - decide "cool" mode to include
 # - include settings page to change colour etc.
 # - Extra: add sound (bg music, every time a piece is placed/flipped) 
 #          flipping animation? Leaderboad for beating AI?
-# 
-#Other more complex heuristics for minimax?
+# - Sockets? for multiple computers
+# - Hints for 2 player? (could use the same minimax alg)
+# - different shaped boards for cool feature with obstacles?
+# Other more complex heuristics for minimax?
 
 from cmu_112_graphics import *
 import tkinter as tk
@@ -47,6 +49,7 @@ def playGame(app):
     app.margin = app.width//10
     app.size = (app.width-2*app.margin)//8
     app.player = True
+    # True is black False is white
     app.over = False
     # Used this for a test case
     # app.board = [['Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black', 'Black'],
@@ -56,34 +59,24 @@ def playGame(app):
     #             ['Black', 'Black', 'Black', 'Black', 'Black', 'White', 'White', 'White'],
     #             ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None],
     #             ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None],
-    #             ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None]]
-    #True is black False is white
+    #             ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None]] 
+    app.Ai = False  
 
 def playAi(app):
-    app.board = []
-    for i in range(app.rows):
-        app.board += [[None]*app.rows]
-    app.board[app.rows//2-1][app.cols//2-1] = app.p2Color
-    app.board[app.rows//2-1][app.cols//2] = app.p1Color
-    app.board[app.rows//2][app.cols//2] = app.p2Color
-    app.board[app.rows//2][app.cols//2-1] = app.p1Color
-    app.margin = app.width//10
-    app.size = (app.width-2*app.margin)//8
-    app.player = True
-    app.over = False
-    app.Ai = False
+    playGame(app)
     app.ez = False
     app.med = False
     app.hard = False
     app.choose = True
+    app.play = False
     # setting this ^ as false for now until i finish the entire alg
 
-#checks if move outflanks opposing teams piece
-def checkOutflank(app, row, col, dire, board):
+# checks if move outflanks opposing teams piece
+def checkOutflank(app, row, col, dire, board, player):
     tempRow = row + dire[0]
     tempCol = col +dire[1]
     checkCol = ''
-    if app.player:
+    if player:
        checkCol = 'Black'
     else:
         checkCol = 'White'
@@ -95,11 +88,11 @@ def checkOutflank(app, row, col, dire, board):
         
     return False
 
-#checks if move is legal
-def isMoveLegal(app, row, col, board):
+# checks if move is legal
+def isMoveLegal(app, row, col, board, player):
     checkColor = ''
     color = ''
-    if app.player:
+    if player:
         checkColor = 'White'
     else:
         checkColor = 'Black'
@@ -108,7 +101,7 @@ def isMoveLegal(app, row, col, board):
     for check in possibleAdj:
         if (0<=row+check[0]<app.rows and 0<=col+check[1]<app.cols
             and board[row+check[0]][col+check[1]]==checkColor):
-            if checkOutflank(app, row, col, check, board):
+            if checkOutflank(app, row, col, check, board, player):
                 legal = True
         
         # Debug Stuff
@@ -135,16 +128,14 @@ def flipPieces(app, row, col, board):
     for dire in checkDir:
         tempRow = row + dire[0]
         tempCol = col + dire[1]
-        
         if (0<= tempRow < app.rows and 0<= tempCol < app.cols and 
             board[tempRow][tempCol]==checkCol2):
-            print(board[tempRow][tempCol])
             while 0<= tempRow < app.rows and 0<= tempCol < app.cols:
                 if (board[tempRow][tempCol] == checkCol):
                     flipDir.append(dire)
                 tempRow += dire[0]
                 tempCol += dire[1]
-    print(flipDir)
+
     for dire in flipDir:
         tempRow = row + dire[0]
         tempCol = col + dire[1]
@@ -153,31 +144,31 @@ def flipPieces(app, row, col, board):
             tempRow += dire[0]
             tempCol += dire[1]
 
-#checks if there's a legal move for the other player before switching turns
-def canSwitch(app):
-    app.player = not app.player
+# checks if there's a legal move for the other player before switching turns
+def canSwitch(app, player, board):
+    player = not player
     for i in range(app.rows):
         for j in range(app.cols):
-            if (not app.board[i][j] and 
-                isMoveLegal(app, i, j, app.board)):
-                print(f'Legal move is {i},{j}')
-                app.player = not app.player
+            if (not board[i][j] and 
+                isMoveLegal(app, i, j, board, app.player)):
                 return True
-    app.player = not app.player
-    print('no bitch')
+    print('no switch')
     return False
 
-#checks if game over and returns winner's score
-def checkWin(app):
+# checks if game over and returns winner's score
+def checkWin(app, board):
     for i in range(app.rows):
         for j in range(app.cols):
-            if not app.board[i][j] and isMoveLegal(app, i, j, app.board): 
+            if (not board[i][j] and 
+                (isMoveLegal(app, i, j, board, True) or 
+                isMoveLegal(app, i, j, board, False))): 
                 return False
     return True
-#Heuristics Below
-#Assumes that AI is always white for now
 
-#Count's score by only evaluating number of pieces
+# Heuristics Below
+# Assumes that AI is always white for now
+
+# Count's score by only evaluating number of pieces
 def ezScore(app, board):
     scoreW = 0
     scoreB = 0
@@ -187,21 +178,25 @@ def ezScore(app, board):
                 scoreW += 1
             elif board[i][j] == 'Black':
                 scoreB += 1
-    return scoreB, scoreW
+    return scoreW - scoreB
 
+# weights corners and edge pieces more (5 and 3 respectively)
 def medScore(app, board):
     scoreW = 0
     scoreB = 0
+    corner = 5
+    edge = 3
+    mid = 1
     for i in range(app.rows):
         for j in range(app.cols):
             add = 0
             if not board[i][j]: 
                 if ((i==0 and j == 0) or (i == app.rows-1 and j == app.cols-1) 
                     or (i == 0 and j == app.cols-1) or (i == app.rows-1 and j == 0)):
-                    add = 5
+                    add = corner
                 elif (i == 0 or j == 0 or i == app.rows-1 or j == app.cols-1):
-                    add = 3
-                else: add = 1
+                    add = edge
+                else: add = mid
             if board[i][j] == 'White':
                 scoreW += add
             elif board[i][j] == 'Black':
@@ -258,16 +253,71 @@ def hardScore(app, board):
  
 # Helper func that returns list of possible moves
 # Assuming AI is only white for now
-def possMoves(app, board):
+def possMoves(app, board, player):
     moves = []
-    colour = 'White'
-    for i in range(app.rows):
-        for j in range(app.cols):
-            if not board[i][j] and isMoveLegal(app, i, j, board):
+    if player:
+        colour = 'Black'
+    else:
+        colour = 'White'
+    for i in range(8):
+        for j in range(8):
+            if not board[i][j] and isMoveLegal(app, i, j, board, player):
                 newBoard = copy.deepcopy(board)
                 newBoard[i][j] = colour
+                flipPieces(app, i, j, newBoard)
                 moves.append(newBoard)
     return moves
+
+# written the AI stuff here because its not complete, will reorganise once its working
+def getScore(app, board):
+    if app.ez:
+        return ezScore(app, board)
+    elif app.med:
+        return medScore(app, board)
+    elif app.hard:
+        return hardScore(app, board)
+
+# makes move for AI
+def makeMove(app):
+    depth = 3
+    move = minimax(app, app.board, False, depth)
+    print(move)
+    print(app.board)
+    app.board = copy.deepcopy(move[1])
+
+# Incomplete minimax, still have to write alpha beta pruning (have written down here because its incomplete)
+# Minimax alg that always runs a depth of 3, 
+# diffuclty is varied by assesing board score differently
+def minimax(app, board, player, depth):
+    if depth == 0 or checkWin(app, board):
+        return getScore(app, board), board
+    # haven't accounted for the game being over
+    moves = possMoves(app, board, player)
+    if not player: 
+        hi = None
+        for move in moves:
+            # New moves will be the child
+            score = None
+            if canSwitch(app, player, board):
+                score = minimax(app, move, not player, depth-1)
+            else:
+                score = minimax(app, move, player, depth-1)
+            if not hi or hi < score[0]:
+                hi = score[0]
+                goodMove = move
+        return hi, goodMove
+    else:
+        lo = None
+        for move in moves:
+            # New moves will be the child
+            if canSwitch(app, player, board):
+                score = minimax(app, move, not player, depth-1)
+            else:
+                score = minimax(app, move, player, depth-1)
+            if not lo or lo > score[0]:
+                lo = score[0]
+                goodMove = move
+        return lo, goodMove
 
 def mousePressed(app, event):
     #First checks what page is active
@@ -280,8 +330,10 @@ def mousePressed(app, event):
                 playGame(app)
 
             #pages for other 2 buttons are not ready yet
-            # elif app.b2y0 < event.y < app.b2y1:
-            #     continue
+            elif app.b2y0 < event.y < app.b2y1:
+                app.home = False
+                playAi(app)
+
             # elif app.b2y0 < event.y < app.b2y1:
             #     continue
 
@@ -295,17 +347,18 @@ def mousePressed(app, event):
             row = (event.x - app.margin)//app.size
             col = (event.y - app.margin)//app.size
             #makes move if spot is empty and legal
-            if not app.board[row][col] and isMoveLegal(app, row, col, app.board):
-                print(isMoveLegal(app, row, col, app.board))
+            if not app.board[row][col] and isMoveLegal(app, row, col, app.board, app.player):
+                print(isMoveLegal(app, row, col, app.board, app.player))
                 if app.player:
                     app.board[row][col] = 'Black'
                 else:
                     app.board[row][col] = 'White'
+                print(f'move made {row},{col}')
                 #Flips all newly outflanked pieces 
                 flipPieces(app, row, col, app.board) 
                 #switches turn only if other player has a valid move
-                if canSwitch(app):
-                    print(canSwitch(app))
+                if canSwitch(app, app.player, app.board):
+                    print(canSwitch(app, app.player, app.board))
                     app.player = not app.player
                 else: print('no switch')
 
@@ -313,36 +366,36 @@ def mousePressed(app, event):
                 if app.Ai and not app.player:
                     while not app.player:
                         makeMove(app)
-                        if canSwitch(app):
+                        if canSwitch(app, app.player, app.board):
                             app.player = not app.player
 
-                if checkWin(app): 
+                if checkWin(app, app.board): 
                     app.over = True
                     print('Game Over')
                     #game over
             else:
                 print('Illegal Move')
-        elif app.choose:
-            #checking if mouse was clicked inside a button
-            if app.bx0 < event.x < app.bx1:
-                if app.b1y0 < event.y < app.b1y1:
-                    app.ez = True
-                    app.med = False
-                    app.hard = False
-                elif app.b2y0 < event.y < app.b2y1:
-                    app.ez = False
-                    app.med = True
-                    app.hard = False
-                elif app.b3y0 < event.y < app.b3y1:
-                    app.ez = False
-                    app.med = False
-                    app.hard = True
-            app.choose = False
-            app.Ai = True
-            app.play = True
-        
-
-
+    elif app.choose:
+        #checking if mouse was clicked inside a button
+        if app.bx0 < event.x < app.bx1:
+            print('mmmmm')
+            if app.b1y0 < event.y < app.b1y1:
+                app.ez = True
+                app.choose = False
+                app.Ai = True
+                app.play = True 
+                print('tf')
+            elif app.b2y0 < event.y < app.b2y1:
+                app.med = True
+                app.choose = False
+                app.Ai = True
+                app.play = True 
+            elif app.b3y0 < event.y < app.b3y1:
+                app.hard = True
+                app.choose = False
+                app.Ai = True
+                app.play = True 
+   
 
 def keyPressed(app, event):
     #Going back to the home screen
@@ -434,6 +487,11 @@ def redrawAll(app, canvas):
         drawHome(app, canvas)
     elif app.play:
         drawBoard(app, canvas)
+    elif app.choose:
+        drawDiffuclty(app, canvas)
+        
+        
+
 
 def runOthello():
     print('Running Othello :)')
@@ -445,56 +503,13 @@ def main():
 if (__name__ == '__main__'):
     main()
 
-def getScore(app, board):
-    if app.ez:
-        return ezScore(app, board)
-    elif app.med:
-        return medScore(app, board)
-    elif app.hard:
-        return hardScore(app, board)
 
-#makes move for AI
-def makeMove(app):
-    move = minimax(app, app.board, app.player)
-    app.board = copy.deepcopy(move[1])
 
-#Incomplete minimax, still have to write alpha beta pruning
-def minimax(app, board, player, depth=3):
-    if depth == 0:
-        return getScore(board), board
-    if player:
-        hi = None
-        moves = possMoves(app, board)
-        for move in moves:
-            #New moves will be the child
-            newMoves = possMoves(app, move)
-            score = None
-            if canSwitch():
-                score = minimax(app, depth-1, newMoves, not player)
-            else:
-                score = minimax(app, depth-1, newMoves, player)
-            if not hi or hi < score[0]:
-                hi = score
-                goodMove = board
-        return hi, goodMove
-    else:
-        lo = None
-        moves = possMoves(app, board)
-        for move in moves:
-            #New moves will be the child
-            newMoves = possMoves(app, move)
-            if canSwitch():
-                score = minimax(app, depth-1, newMoves, not player)
-            else:
-                score = minimax(app, depth-1, newMoves, player)
-            if not lo or lo > score[0]:
-                lo = score
-                goodMove = board
-        return hi, goodMove
+
 
         
-#Pseudo Code for the AI to play against 
-#I got this from https://www.youtube.com/watch?v=l-hh51ncgDI
+# Pseudo Code for the AI to play against 
+# I got this from https://www.youtube.com/watch?v=l-hh51ncgDI
 
 # function minimax(position, depth, alpha, beta, maximizingPlayer)
 # 	if depth == 0 or game over in position
@@ -519,7 +534,6 @@ def minimax(app, board, player, depth=3):
 # 			if beta <= alpha
 # 				break
 # 		return minEval
- 
  
 # // initial call
 # minimax(currentPosition, 3, -∞, +∞, true)
