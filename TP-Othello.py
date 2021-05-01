@@ -29,6 +29,8 @@ def appStarted(app):
     app.home = True
     app.play = False
     app.help = False
+    app.choose = False
+    app.hi = False
     createHome(app)
 
 def createHome(app):
@@ -36,8 +38,8 @@ def createHome(app):
     # coordinates for 3 main buttons
     app.bx0 = app.width//3
     app.bx1 = app.width*2//3
-    app.b1y0 = app.height*5//16
-    app.b1y1 = app.height*7//16
+    app.b1y0 = app.height*4//16
+    app.b1y1 = app.height*6//16
     app.b2y0 = app.b1y1 + app.height//16
     app.b2y1 = app.b2y0 + app.height*2//16
     app.b3y0 = app.b2y1 + app.height//16
@@ -66,7 +68,8 @@ def playGame(app):
     app.Ai = False 
     app.prevMove = []
     app.score = 0
-    app.win = None    
+    app.win = None
+    app.legal = True    
      
 def playAi(app):
     playGame(app)
@@ -162,6 +165,34 @@ def minimax(app, board, alpha, beta, player, depth):
             if beta <= alpha: break
         return lo, goodMove
 
+def updateScore(app, score, n):
+    f = open('Highscores.txt', 'r')
+    scores = f.read()
+    check = ''
+    if app.ez:
+        check = 'easy'
+    elif app.med: check = 'med'
+    elif app.hard: check = 'hard'
+    edit = []
+    makeEdit = False
+    for line in scores.splitlines():
+        entry = line.split()
+        # Checking if either score is beaten 
+        # or same score in fewer moves
+        if (entry[0] == check and 
+            (int(entry[1]) < score or 
+            (int(entry[1]==score and entry[2]<n)))):
+            edit.append([check, score, n])
+            makeEdit = True
+        else: edit.append(entry)
+    if not makeEdit: return
+    f.close()
+    f = open('Highscores.txt', 'w')
+    for score in edit:
+        message = f'{score[0]} {score[1]} {score[2]}\n'
+        f.write(message)   
+    f.close()
+
 def mousePressed(app, event):
     #First checks what page is active
     if app.home:
@@ -198,6 +229,7 @@ def mousePressed(app, event):
             col = (event.y - app.marginy)//app.size
             #makes move if spot is empty and legal
             if not app.board[row][col] and isMoveLegal(app, row, col, app.board, app.player):
+                app.legal = True
                 prev = copy.deepcopy(app.board)
                 app.prevMove.append(prev)
                 if app.player:
@@ -227,13 +259,18 @@ def mousePressed(app, event):
                     if app.score>0:
                         app.win = False 
                         print('white wins')
-                    elif app.score<0: 
+                    elif app.score<0:
+                        if app.Ai:
+                            print(len(app.prevMove))
+                            updateScore(app, abs(app.score), 
+                                        len(app.prevMove)) 
                         app.win = True
                         print('black wins')
                     else: print('draw')
                     print('Game Over')
                     #game over
             else:
+                app.legal = False
                 print('Illegal Move')
 
     elif app.choose:
@@ -255,16 +292,15 @@ def mousePressed(app, event):
                 app.Ai = True
                 app.play = True 
 
-# Writing the features here for ease (will add a section in code later):
-#   -esc: return to home screen
-#   -r: restarts game
-#   -u: undos previous move  
 def keyPressed(app, event):
     #Going back to the home screen
     if event.key == 'Escape' and not app.home:
         app.home = True
         app.play = False
         app.help = False
+        app.choose = False
+        app.hi = False
+    
     #Restarts game
     if event.key.lower() == 'r' and app.play:
         if app.Ai: 
@@ -281,6 +317,9 @@ def keyPressed(app, event):
         # against AI as user is always Black!
         if not app.Ai:
             app.player = not app.player
+    if event.key.lower() == 'h':
+        app.home = False
+        app.hi = True
     # Test cases
     if event.key.lower() == 's' and app.play:
         app.board = [['White', 'White', 'White', 'White', 'White', 'White', 'White', 'White'],
@@ -302,33 +341,41 @@ def keyPressed(app, event):
                     ['Black', 'Black', 'Black', 'Black', 'Black', 'White', None, None]]
 
 def drawHome(app, canvas):
-    tx = (app.bx0 + app.bx1)//2
+    canvas.create_rectangle(0,0,app.width, app.height,
+                            fill = 'Green')
+    tx = app.width//2
     ty0 = app.height/16
     fSize  = 40
     canvas.create_text(tx, ty0, text='Othello!',
                         font=f'Arial {fSize} bold')
-    canvas.create_rectangle(app.bx0,app.b1y0,app.bx1,app.b1y1,
-                            fill='Red', width=8)
     
+    canvas.create_rectangle(app.bx0,app.b1y0,app.bx1,app.b1y1,
+                            fill='Black', width=8)
     ty1 = (app.b1y0 + app.b1y1)//2
     canvas.create_text(tx, ty1, text='2 player!',
-                         font='Arial 16 bold')
+                         font='Arial 16 bold', 
+                         fill='White')
+    
     canvas.create_rectangle(app.bx0,app.b2y0,app.bx1,app.b2y1,
-                            fill='Red', width=8)
+                            fill='Black', width=8)
     ty2 = (app.b2y0 + app.b2y1)//2
     canvas.create_text(tx, ty2, text='Play with AI!', 
-                        font='Arial 16 bold')
+                        font='Arial 16 bold',
+                        fill='White')
+    
     canvas.create_rectangle(app.bx0,app.b3y0,app.bx1,app.b3y1,
-                            fill='Red', width=8)    
+                            fill='Black', width=8)    
     ty3 = (app.b3y0 + app.b3y1)//2
-    canvas.create_text(tx, ty3, text='"cool" feature (make your own board or smth)',
-                        font='Arial 16 bold')                                       
+    canvas.create_text(tx, ty3, text='"cool" feature (not ready!)',
+                        font='Arial 16 bold',
+                        fill='White')                                       
     #have not decided what the 'cool' feature will be yet
 
     canvas.create_rectangle(app.hx0, app.hy0, app.hx1, app.hy1,
-                            fill='Blue', width=6)
+                            fill='Black', width=6)
     ty4 = (app.hy0 + app.hy1)//2
-    canvas.create_text(tx, ty4, text='Help?', font='Arial 12 bold')
+    canvas.create_text(tx, ty4, text='Help?', font='Arial 12 bold',
+                        fill='White')
 
 def drawHelp(app, canvas):
     tx0 = app.width//2
@@ -350,24 +397,54 @@ def drawHelp(app, canvas):
                         font='Arial 28 bold', anchor='w')
 
 def drawDiffuclty(app, canvas):
-    tx = (app.bx0 + app.bx1)//2
+    canvas.create_rectangle(0,0,app.width, app.height,
+                        fill = 'Green')
+    fSize  = 30
+
+    tx = app.width//2
+    canvas.create_text(tx, app.height//8, text='Choose a difficulty to play!',
+                    font=f'Arial {fSize} bold')
     ty0 = app.height/16
     fSize  = 40
     canvas.create_rectangle(app.bx0,app.b1y0,app.bx1,app.b1y1,
-                            fill='Red', width=8)
+                            fill='Black', width=8)
     ty1 = (app.b1y0 + app.b1y1)//2
-    canvas.create_text(tx, ty1, text='Easy!', font='Arial 16 bold')
+    canvas.create_text(tx, ty1, text='Easy!', font='Arial 16 bold',
+                        fill='White')
 
     canvas.create_rectangle(app.bx0,app.b2y0,app.bx1,app.b2y1,
-                            fill='Red', width=8)
+                            fill='Black', width=8)
     ty2 = (app.b2y0 + app.b2y1)//2
-    canvas.create_text(tx, ty2, text='Medium', font='Arial 16 bold')
+    canvas.create_text(tx, ty2, text='Medium', font='Arial 16 bold',
+                        fill='White')
 
     canvas.create_rectangle(app.bx0,app.b3y0,app.bx1,app.b3y1,
-                            fill='Red', width=8)    
+                            fill='Black', width=8)    
     ty3 = (app.b3y0 + app.b3y1)//2
-    canvas.create_text(tx, ty3, text='Hard', font='Arial 16 bold')   
+    canvas.create_text(tx, ty3, text='Hard', font='Arial 16 bold',
+                        fill='White')   
     pass
+
+def drawHighscores(app, canvas):
+    tx = app.width//2
+    ty0 = app.height/16
+    fSize  = 40
+    canvas.create_text(tx, ty0, text='Highscores!',
+                        font=f'Arial {fSize} bold')
+    ty1 = (app.b1y0 + app.b1y1)//2
+    f = open('Highscores.txt', 'r')
+    message = f.read()
+    for line in message.splitlines():
+        text = line.split()
+        diff = ''
+        if text[0] == 'easy': diff = 'Easy'
+        elif text[0] == 'med': diff = 'Medium'
+        elif text[0] == 'hard': diff = 'Hard' 
+        canvas.create_text(tx, ty1, 
+                    text=f'{diff}: {text[1]} pieces in {text[2]} moves', 
+                        font='Arial 16 bold')
+        ty1 += app.height//10
+    f.close()
 
 # Helper func to get coordinates of top left 
 # and bottom right coordinates of cells
@@ -399,7 +476,35 @@ def drawBoard(app, canvas):
     else: turn = 'White'
     canvas.create_text(x,y,text=f"{turn}'s turn",
                         font='Arial 16 bold')
-    
+    black = 0
+    white = 0
+    for row in app.board:
+        black += row.count('Black')
+        white += row.count('White')
+    tx0 = app.marginx//2
+    tx1 = app.width - tx0
+    ty0 = app.height//2 - app.size//3
+    ty1 = app.height//2 + app.size//3
+    if app.Ai:
+        canvas.create_text(tx0,ty0,text=f"Your Score:",
+                        font='Arial 18 bold')
+        canvas.create_text(tx1,ty0,text=f"AI's Score:",
+                        font='Arial 18 bold')
+    else:
+        canvas.create_text(tx0,ty0,text=f"Black's Score:",
+                        font='Arial 18 bold')
+        canvas.create_text(tx1,ty0,text=f"White's Score:",
+                        font='Arial 18 bold')
+    canvas.create_text(tx0,ty1,text=f"{black}",
+                        font='Arial 18 bold')
+    canvas.create_text(tx1,ty1,text=f"{white}",
+                        font='Arial 18 bold')
+    if not app.legal:
+        canvas.create_text(app.width//2,app.height-app.marginy//2,
+                        text='Illegal Move :( Try again!',
+                        font='Arial 18 bold',
+                        fill='Red')        
+
     if app.over: drawWin(app, canvas)
 
 def drawWin(app, canvas):
@@ -447,6 +552,8 @@ def redrawAll(app, canvas):
         drawBoard(app, canvas)
     elif app.choose:
         drawDiffuclty(app, canvas)
+    elif app.hi:
+        drawHighscores(app, canvas)
 
 def runOthello():
     print('Running Othello :)')

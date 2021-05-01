@@ -1,0 +1,3 @@
+easy 0 0
+med 63 4
+hard 0 0

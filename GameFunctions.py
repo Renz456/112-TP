@@ -34,6 +34,7 @@ def isMoveLegal(app, row, col, board, player):
                 legal = True
     return legal
 
+# Flips pieces when a move is made
 def flipPieces(app, row, col, board):
     checkDir = [(-1,0),(0,-1),(1,0),(0,1),(-1,1),(-1,-1),(1,1),(1,-1)]
     flipDir = []
