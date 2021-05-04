@@ -1,3 +1,3 @@
-easy 0 0
-med 63 4
-hard 0 0
+easy 61 4
+med 40 21
+hard 38 27

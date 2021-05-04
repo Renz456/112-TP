@@ -6,10 +6,11 @@ def checkOutflank(app, row, col, dire, board, player):
     tempCol = col +dire[1]
     checkCol = ''
     if player:
-       checkCol = 'Black'
+       checkCol = app.p1Color
     else:
-        checkCol = 'White'
-    while 0<=tempRow<app.rows and 0<=tempCol<app.cols:
+        checkCol = app.p2Color
+    while ((0<=tempRow<app.rows and 0<=tempCol<app.cols)
+            and board[tempRow][tempCol]):
         if board[tempRow][tempCol] == checkCol:
             return True
         tempRow += dire[0]
@@ -22,9 +23,9 @@ def isMoveLegal(app, row, col, board, player):
     checkColor = ''
     color = ''
     if player:
-        checkColor = 'White'
+        checkColor = app.p2Color
     else:
-        checkColor = 'Black'
+        checkColor = app.p1Color
     possibleAdj = [(-1,0),(0,-1),(1,0),(0,1),(-1,1),(-1,-1),(1,1),(1,-1)]
     legal = False
     for check in possibleAdj:
@@ -40,16 +41,17 @@ def flipPieces(app, row, col, board):
     flipDir = []
     checkCol = board[row][col]
     checkCol2 = ''
-    if checkCol == 'Black':
-        checkCol2 = 'White'
-    else: checkCol2 = 'Black'
+    if checkCol == app.p1Color:
+        checkCol2 = app.p2Color
+    else: checkCol2 = app.p1Color
     
     for dire in checkDir:
         tempRow = row + dire[0]
         tempCol = col + dire[1]
         if (0<= tempRow < app.rows and 0<= tempCol < app.cols and 
             board[tempRow][tempCol]==checkCol2):
-            while 0<= tempRow < app.rows and 0<= tempCol < app.cols:
+            while ((0<= tempRow < app.rows and 0<= tempCol < app.cols)
+                    and board[tempRow][tempCol]):
                 if (board[tempRow][tempCol] == checkCol):
                     flipDir.append(dire)
                 tempRow += dire[0]
