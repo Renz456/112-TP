@@ -21,7 +21,7 @@ def appStarted(app):
     app.set = False
     # List of all Tkinter colours. 
     # Got this from http://www.science.smith.edu/dftwiki/index.php/Color_Charts_for_TKinter
-    colors = ['snow', 'ghost white', 'white smoke', 'gainsboro', 'floral white', 'old lace',
+    colors = ['white','black','green','snow', 'ghost white', 'white smoke', 'gainsboro', 'floral white', 'old lace',
     'linen', 'antique white', 'papaya whip', 'blanched almond', 'bisque', 'peach puff',
     'navajo white', 'lemon chiffon', 'mint cream', 'azure', 'alice blue', 'lavender',
     'lavender blush', 'misty rose', 'dark slate gray', 'dim gray', 'slate gray',
@@ -128,7 +128,7 @@ def createHome(app):
 def playGame(app):
     app.board = []
     for i in range(app.rows):
-        app.board += [[None]*app.rows]
+        app.board += [[None]*app.cols]
     app.board[app.rows//2-1][app.cols//2-1] = app.p2Color
     app.board[app.rows//2-1][app.cols//2] = app.p1Color
     app.board[app.rows//2][app.cols//2] = app.p2Color
@@ -297,9 +297,7 @@ def mousePressed(app, event):
                 app.home = False
                 playAi(app)
             
-            # page for other cool feature is not ready yet
             elif app.b3y0 < event.y < app.b3y1:
-                print('yo')
                 app.home = False
                 createCustom(app)
                 app.custom = True
@@ -343,15 +341,15 @@ def mousePressed(app, event):
             # Checks if colour is valid before changing settings
             if app.b1y0 < event.y < app.b1y1:
                 colour = app.getUserInput('Enter a colour')
-                if colour.lower() in app.colors:
+                if colour and colour.lower() in app.colors:
                     app.bColor = colour
             elif app.b2y0 < event.y < app.b2y1:
                 colour = app.getUserInput('Enter a colour')
-                if colour.lower() in app.colors:
+                if colour and colour.lower() in app.colors:
                     app.p1Color = colour
             elif app.b3y0 < event.y < app.b3y1:
                 colour = app.getUserInput('Enter a colour')
-                if colour.lower() in app.colors:
+                if colour and colour.lower() in app.colors:
                     app.p2Color = colour
 
     # Game Screen
@@ -438,7 +436,7 @@ def keyPressed(app, event):
         app.choose = False
         app.hi = False
         app.set = False
-        app.custom
+        app.custom = False
 
     #Restarts game
     if event.key.lower() == 'r' and app.play:
